@@ -11,13 +11,6 @@
 
 ## 📸 Screenshots
 
-> **How to add screenshots:**
-> 1. Take screenshots from your emulator or phone
-> 2. Create a folder in your project called `screenshots/`
-> 3. Save your images there (e.g. `screenshots/splash.png`)
-> 4. Push to GitHub with `git add . && git commit -m "add screenshots" && git push`
-> 5. Replace the placeholder paths below with your actual filenames
-
 <p float="left">
   <img src="screenshots/splash.png" width="200" alt="Splash Screen"/>
   <img src="screenshots/login.png" width="200" alt="Login Page"/>
@@ -250,30 +243,3 @@ flutter run
 This project was developed as an academic major project at **Manipal University Jaipur**.  
 © 2026 Hakim Mohammad Iisa. All rights reserved.
 ```
-
----
-
-**How to add your screenshots:**
-
-1. Take screenshots from your emulator — in Android Studio emulator press the **camera icon** on the side toolbar, or press `Ctrl + S` in the emulator window
-2. Create a `screenshots/` folder in your project root
-3. Save each screenshot with these exact names:
-```
-splash.png
-login.png
-home.png
-shops.png
-shop_detail.png
-product_detail.png
-cart.png
-orders.png
-vendor_dashboard.png
-manage_products.png
-vendor_orders.png
-admin_panel.png
-```
-4. Push to GitHub:
-```
-git add .
-git commit -m "add README and screenshots"
-git push
