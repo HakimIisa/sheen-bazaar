@@ -27,7 +27,7 @@
 
 <p float="left">
   <img src="screenshots/vendor_dashboard.png" width="200" alt="Vendor Dashboard"/>
-  <img src="screenshots/manage_products.png" width="200" alt="Manage Products"/>
+  <img src="screenshots/add_product.png" width="200" alt="Add Product with AI"/>
   <img src="screenshots/vendor_orders.png" width="200" alt="Vendor Orders"/>
   <img src="screenshots/admin_panel.png" width="200" alt="Admin Panel"/>
 </p>
@@ -43,11 +43,13 @@
 - Add multiple products to cart from different shops
 - Place orders with a single tap
 - Track order status in real time (Placed → Confirmed → Dispatched → Delivered)
-- View complete order history
+- View complete order history with visual progress tracker
+- **✨ AI Shopping Assistant** — type natural language queries like "traditional Kashmiri gift under ₹2000" and get intelligent product recommendations
 
 ### 🧑‍🎨 Vendor / Shop Owner
 - Create and manage their own shop profile
 - Add, edit and delete product listings
+- **✨ AI Description Generator** — enter a product name and let AI write a rich, authentic Kashmiri craft description instantly
 - Toggle shop open/closed status
 - View and update incoming customer orders in real time
 
@@ -57,6 +59,32 @@
 - Ban or unban vendor shops
 - View all orders placed on the platform
 - View all registered users and their roles
+
+---
+
+## 🤖 AI Features
+
+### ✨ AI Shopping Assistant (Customer)
+Powered by Claude (Anthropic), the AI Shopping Assistant helps customers find products using natural language:
+
+- Understands intent from conversational queries
+- Fetches real-time product catalog from Firestore
+- Suggests matching products with explanations
+- Filters intelligently by price, category and type
+- Maintains conversation context within the session
+
+**Example queries:**
+> "I want a traditional Kashmiri gift under ₹2000"  
+> "Show me pashmina shawls"  
+> "What wooden crafts do you have?"
+
+### ✨ AI Description Generator (Vendor)
+Vendors can generate rich, authentic product descriptions with one tap:
+
+- Enter the product name and select category
+- Tap the ✨ button next to the description field
+- Claude generates a culturally rich, detailed description instantly
+- Highlights handmade nature and cultural significance of the craft
 
 ---
 
@@ -72,9 +100,12 @@ sheen_bazaar/
 │   │   └── product_model.dart
 │   ├── services/
 │   │   ├── category_service.dart
-│   │   └── shop_service.dart
+│   │   ├── shop_service.dart
+│   │   └── claude_service.dart    # Claude API integration
 │   ├── providers/
 │   │   └── cart_provider.dart     # Global cart state (Provider)
+│   ├── config/
+│   │   └── api_config.dart        # API keys (excluded from Git)
 │   └── screens/
 │       ├── splash_screen.dart     # 3s branded splash + auth routing
 │       ├── auth/
@@ -86,11 +117,12 @@ sheen_bazaar/
 │       │   ├── product_detail.dart
 │       │   ├── cart_screen.dart
 │       │   ├── cart_icon_button.dart
-│       │   └── order_history.dart
+│       │   ├── order_history.dart
+│       │   └── ai_assistant.dart  # AI Shopping Assistant ✨
 │       ├── shop_owner/
 │       │   ├── shop_dashboard.dart
 │       │   ├── create_shop.dart
-│       │   ├── manage_products.dart
+│       │   ├── manage_products.dart  # AI Description Generator ✨
 │       │   └── vendor_orders.dart
 │       └── admin/
 │           ├── admin_panel.dart
@@ -166,6 +198,7 @@ createdAt : Timestamp
 - Flutter SDK (3.x or above)
 - Android Studio or VS Code
 - Firebase account
+- Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
 - Git
 
 ### Steps
@@ -189,7 +222,18 @@ flutter pub get
 - Download `google-services.json` and place it in `android/app/`
 - Run `flutterfire configure` to generate `lib/firebase_options.dart`
 
-**4. Firestore Indexes**
+**4. API Key Setup**
+
+Create `lib/config/api_config.dart`:
+```dart
+class ApiConfig {
+  static const String claudeApiKey = 'your-claude-api-key-here';
+}
+```
+
+> ⚠️ This file is excluded from Git via `.gitignore` to protect your API key.
+
+**5. Firestore Indexes**
 
 Create these composite indexes in Firebase Console → Firestore → Indexes:
 
@@ -198,7 +242,7 @@ Create these composite indexes in Firebase Console → Firestore → Indexes:
 | orders | shopId (Asc) | createdAt (Desc) | Collection |
 | orders | userId (Asc) | createdAt (Desc) | Collection |
 
-**5. Run the app**
+**6. Run the app**
 ```bash
 flutter run
 ```
@@ -222,6 +266,8 @@ flutter run
 | Cloud Firestore | NoSQL database |
 | Firebase Storage | Image storage |
 | Provider | State management (cart) |
+| Claude API (Anthropic) | AI Shopping Assistant + Description Generator |
+| http | REST API calls to Claude |
 | image_picker | Image selection from gallery |
 
 ---
@@ -229,12 +275,13 @@ flutter run
 ## 🔮 Future Scope
 
 - Payment gateway integration (Razorpay / UPI)
-- AI-based product recommendations
-- Multilingual support (Urdu, Hindi, Kashmiri)
 - Augmented Reality product preview
+- Multilingual support (Urdu, Hindi, Kashmiri)
 - Push notifications for order updates
 - Vendor analytics dashboard
 - Customer reviews and ratings system
+- Firebase Storage for direct image uploads
+- AI-powered "You might also like" recommendations
 
 ---
 
@@ -243,3 +290,4 @@ flutter run
 This project was developed as an academic major project at **Manipal University Jaipur**.  
 © 2026 Hakim Mohammad Iisa. All rights reserved.
 ```
+
