@@ -5,6 +5,7 @@ import 'shops_list.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'cart_icon_button.dart';
 import '../auth/login_page.dart';
+import 'ai_assistant.dart';
 
 class CustomerHome extends StatefulWidget {
   const CustomerHome({super.key});
@@ -144,6 +145,31 @@ class _CustomerHomeState
           );
         },
       ),
+      floatingActionButton:
+          FloatingActionButton.extended(
+            backgroundColor: const Color(
+              0xFF3D2B1F,
+            ),
+            icon: const Text(
+              '✨',
+              style: TextStyle(fontSize: 18),
+            ),
+            label: const Text(
+              'AI Assistant',
+              style: TextStyle(
+                color: Color(0xFFC9A55A),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    const AiAssistant(),
+              ),
+            ),
+          ),
     );
   }
 }

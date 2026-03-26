@@ -36,3 +36,4 @@ lib/firebase_options.dart
 # OS
 .DS_Store
 Thumbs.db
+lib/config/api_config.dart

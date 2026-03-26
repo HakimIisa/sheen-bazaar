@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/product_model.dart';
+import '../../services/claude_service.dart';
 
 class ManageProducts extends StatefulWidget {
   final String shopId;
@@ -453,14 +454,41 @@ class _AddEditProductState
                     : null,
               ),
               _label('Description'),
-              _field(
-                controller: _descCtrl,
-                hint:
-                    'Describe the craft and its origin...',
-                maxLines: 4,
-                validator: (v) => v!.isEmpty
-                    ? 'Required'
-                    : null,
+              Row(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _field(
+                      controller: _descCtrl,
+                      hint:
+                          'Describe the craft and its origin...',
+                      maxLines: 4,
+                      validator: (v) => v!.isEmpty
+                          ? 'Required'
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding:
+                        const EdgeInsets.only(
+                          bottom: 16,
+                        ),
+                    child: _AiGenerateButton(
+                      onGenerated: (text) {
+                        setState(
+                          () => _descCtrl.text =
+                              text,
+                        );
+                      },
+                      getProductName: () =>
+                          _nameCtrl.text.trim(),
+                      getCategoryId: () =>
+                          _categoryId,
+                    ),
+                  ),
+                ],
               ),
               _label('Image URL'),
               _field(
@@ -641,6 +669,105 @@ class _AddEditProductState
           ),
           filled: true,
           fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+class _AiGenerateButton extends StatefulWidget {
+  final Function(String) onGenerated;
+  final String Function() getProductName;
+  final String Function() getCategoryId;
+
+  const _AiGenerateButton({
+    required this.onGenerated,
+    required this.getProductName,
+    required this.getCategoryId,
+  });
+
+  @override
+  State<_AiGenerateButton> createState() =>
+      _AiGenerateButtonState();
+}
+
+class _AiGenerateButtonState
+    extends State<_AiGenerateButton> {
+  bool _loading = false;
+
+  Future<void> _generate() async {
+    final name = widget.getProductName();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter a product name first',
+          ),
+          backgroundColor: Color(0xFFB5603A),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final category = widget.getCategoryId();
+    final categoryName = category == 'pashmina'
+        ? 'Pashmina'
+        : category == 'papier_mache'
+        ? 'Papier Mache'
+        : 'Walnut Wood';
+
+    final response = await ClaudeService.sendMessage(
+      systemPrompt:
+          'You are an expert in Kashmiri handicrafts with deep knowledge '
+          'of the cultural heritage, craftsmanship techniques, and artisan '
+          'traditions of Kashmir. Write rich, authentic product descriptions '
+          'for a marketplace app. Keep descriptions between 2-4 sentences. '
+          'Be evocative and highlight the handmade nature and cultural significance. '
+          'Do not use markdown formatting — plain text only.',
+      messages: [
+        {
+          'role': 'user',
+          'content':
+              'Write a product description for: "$name" '
+              'Category: $categoryName Kashmiri handicraft.',
+        },
+      ],
+    );
+
+    widget.onGenerated(response);
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Generate with AI',
+      child: GestureDetector(
+        onTap: _loading ? null : _generate,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF3D2B1F),
+            borderRadius: BorderRadius.circular(
+              10,
+            ),
+          ),
+          child: _loading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child:
+                      CircularProgressIndicator(
+                        color: Color(0xFFC9A55A),
+                        strokeWidth: 2,
+                      ),
+                )
+              : const Text(
+                  '✨',
+                  style: TextStyle(fontSize: 20),
+                ),
         ),
       ),
     );
