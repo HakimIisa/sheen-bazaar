@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/shop_model.dart';
+import '../../services/image_upload_service.dart';
+import '../../widgets/image_picker_field.dart';
 
 class CreateShop extends StatefulWidget {
   final ShopModel? existingShop;
@@ -11,8 +14,7 @@ class CreateShop extends StatefulWidget {
   });
 
   @override
-  State<CreateShop> createState() =>
-      _CreateShopState();
+  State<CreateShop> createState() => _CreateShopState();
 }
 
 class _CreateShopState extends State<CreateShop> {
@@ -20,20 +22,17 @@ class _CreateShopState extends State<CreateShop> {
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
-  final _coverImageCtrl = TextEditingController();
-  final _logoCtrl = TextEditingController();
+
+  XFile? _coverImageFile;
+  XFile? _logoFile;
 
   String _selectedCategory = 'pashmina';
   bool _loading = false;
-  bool get _isEditing =>
-      widget.existingShop != null;
+  bool get _isEditing => widget.existingShop != null;
 
   final List<Map<String, String>> _categories = [
     {'id': 'pashmina', 'name': 'Pashmina'},
-    {
-      'id': 'papier_mache',
-      'name': 'Papier Mache',
-    },
+    {'id': 'papier_mache', 'name': 'Papier Mache'},
     {'id': 'wood', 'name': 'Walnut Wood'},
   ];
 
@@ -45,8 +44,6 @@ class _CreateShopState extends State<CreateShop> {
       _nameCtrl.text = s.shopName;
       _descCtrl.text = s.description;
       _locationCtrl.text = s.location;
-      _coverImageCtrl.text = s.coverImage;
-      _logoCtrl.text = s.logo;
       _selectedCategory = s.categoryId;
     }
   }
@@ -56,72 +53,78 @@ class _CreateShopState extends State<CreateShop> {
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _locationCtrl.dispose();
-    _coverImageCtrl.dispose();
-    _logoCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate())
-      return;
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
 
-    final uid =
-        FirebaseAuth.instance.currentUser!.uid;
-    final data = {
-      'shopName': _nameCtrl.text.trim(),
-      'description': _descCtrl.text.trim(),
-      'location': _locationCtrl.text.trim(),
-      'coverImage': _coverImageCtrl.text.trim(),
-      'logo': _logoCtrl.text.trim(),
-      'categoryId': _selectedCategory,
-      'ownerId': uid,
-      'isOpen': true,
-      'rating': _isEditing
-          ? widget.existingShop!.rating
-          : 0.0,
-      'totalReviews': _isEditing
-          ? widget.existingShop!.totalReviews
-          : 0,
-      'createdAt': _isEditing
-          ? widget.existingShop!.createdAt
-          : Timestamp.now(),
-    };
-
     try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final col = FirebaseFirestore.instance.collection('shops');
+
+      // Pre-generate or reuse the doc reference so we have the ID for Storage paths
+      final docRef = _isEditing
+          ? col.doc(widget.existingShop!.id)
+          : col.doc();
+      final shopId = docRef.id;
+
+      // Upload images if new files were picked, otherwise keep existing URLs
+      String coverUrl = _isEditing ? widget.existingShop!.coverImage : '';
+      String logoUrl = _isEditing ? widget.existingShop!.logo : '';
+
+      if (_coverImageFile != null) {
+        coverUrl = await ImageUploadService.upload(
+          image: _coverImageFile!,
+          storagePath: 'shops/$shopId/cover.jpg',
+        );
+      }
+      if (_logoFile != null) {
+        logoUrl = await ImageUploadService.upload(
+          image: _logoFile!,
+          storagePath: 'shops/$shopId/logo.jpg',
+        );
+      }
+
+      final data = {
+        'shopName': _nameCtrl.text.trim(),
+        'description': _descCtrl.text.trim(),
+        'location': _locationCtrl.text.trim(),
+        'coverImage': coverUrl,
+        'logo': logoUrl,
+        'categoryId': _selectedCategory,
+        'ownerId': uid,
+        'isOpen': true,
+        'rating': _isEditing ? widget.existingShop!.rating : 0.0,
+        'totalReviews': _isEditing ? widget.existingShop!.totalReviews : 0,
+        'createdAt': _isEditing
+            ? widget.existingShop!.createdAt
+            : Timestamp.now(),
+      };
+
       if (_isEditing) {
-        await FirebaseFirestore.instance
-            .collection('shops')
-            .doc(widget.existingShop!.id)
-            .update(data);
+        await docRef.update(data);
       } else {
-        await FirebaseFirestore.instance
-            .collection('shops')
-            .add(data);
+        await docRef.set(data);
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               _isEditing
                   ? 'Shop updated successfully!'
                   : 'Shop created successfully!',
             ),
-            backgroundColor: const Color(
-              0xFF3D2B1F,
-            ),
+            backgroundColor: const Color(0xFF3D2B1F),
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
       }
@@ -135,11 +138,7 @@ class _CreateShopState extends State<CreateShop> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE0),
       appBar: AppBar(
-        title: Text(
-          _isEditing
-              ? 'Edit Shop'
-              : 'Create Shop',
-        ),
+        title: Text(_isEditing ? 'Edit Shop' : 'Create Shop'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.pop(context),
@@ -150,16 +149,14 @@ class _CreateShopState extends State<CreateShop> {
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _label('Shop Name'),
               _field(
                 controller: _nameCtrl,
                 hint: 'e.g. Wular Pashmina House',
-                validator: (v) => v!.isEmpty
-                    ? 'Shop name is required'
-                    : null,
+                validator: (v) =>
+                    v!.isEmpty ? 'Shop name is required' : null,
               ),
 
               _label('Description'),
@@ -167,38 +164,26 @@ class _CreateShopState extends State<CreateShop> {
                 controller: _descCtrl,
                 hint: 'Tell your story...',
                 maxLines: 4,
-                validator: (v) => v!.isEmpty
-                    ? 'Description is required'
-                    : null,
+                validator: (v) =>
+                    v!.isEmpty ? 'Description is required' : null,
               ),
 
               _label('Location'),
               _field(
                 controller: _locationCtrl,
                 hint: 'e.g. Lal Chowk, Srinagar',
-                validator: (v) => v!.isEmpty
-                    ? 'Location is required'
-                    : null,
+                validator: (v) =>
+                    v!.isEmpty ? 'Location is required' : null,
               ),
 
               _label('Category'),
               Container(
-                margin: const EdgeInsets.only(
-                  bottom: 16,
-                ),
-                padding:
-                    const EdgeInsets.symmetric(
-                      horizontal: 14,
-                    ),
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(
-                      0xFF3D2B1F,
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF3D2B1F)),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -208,30 +193,35 @@ class _CreateShopState extends State<CreateShop> {
                         .map(
                           (c) => DropdownMenuItem(
                             value: c['id'],
-                            child: Text(
-                              c['name']!,
-                            ),
+                            child: Text(c['name']!),
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setState(
-                      () =>
-                          _selectedCategory = v!,
-                    ),
+                    onChanged: (v) =>
+                        setState(() => _selectedCategory = v!),
                   ),
                 ),
               ),
 
-              _label('Cover Image URL'),
-              _field(
-                controller: _coverImageCtrl,
-                hint: 'https://...',
+              ImagePickerField(
+                label: 'Cover Image',
+                aspectRatio: 16 / 7,
+                pickedFile: _coverImageFile,
+                existingUrl: _isEditing
+                    ? widget.existingShop!.coverImage
+                    : '',
+                onPick: (file) =>
+                    setState(() => _coverImageFile = file),
               ),
 
-              _label('Logo URL'),
-              _field(
-                controller: _logoCtrl,
-                hint: 'https://...',
+              ImagePickerField(
+                label: 'Logo',
+                aspectRatio: 1.0,
+                pickedFile: _logoFile,
+                existingUrl:
+                    _isEditing ? widget.existingShop!.logo : '',
+                onPick: (file) =>
+                    setState(() => _logoFile = file),
               ),
 
               const SizedBox(height: 8),
@@ -239,33 +229,22 @@ class _CreateShopState extends State<CreateShop> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _loading
-                      ? null
-                      : _save,
+                  onPressed: _loading ? null : _save,
                   style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _loading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child:
-                              CircularProgressIndicator(
-                                color:
-                                    Colors.white,
-                                strokeWidth: 2,
-                              ),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : Text(
-                          _isEditing
-                              ? 'Save Changes'
-                              : 'Create Shop',
-                          style: const TextStyle(
-                            fontSize: 16,
-                          ),
+                          _isEditing ? 'Save Changes' : 'Create Shop',
+                          style: const TextStyle(fontSize: 16),
                         ),
                 ),
               ),
@@ -278,10 +257,7 @@ class _CreateShopState extends State<CreateShop> {
 
   Widget _label(String text) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 6,
-        top: 4,
-      ),
+      padding: const EdgeInsets.only(bottom: 6, top: 4),
       child: Text(
         text,
         style: const TextStyle(
@@ -308,10 +284,7 @@ class _CreateShopState extends State<CreateShop> {
         validator: validator,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 13,
-          ),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
           filled: true,
           fillColor: Colors.white,
         ),

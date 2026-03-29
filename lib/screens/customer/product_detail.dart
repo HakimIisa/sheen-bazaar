@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
 import '../../providers/cart_provider.dart';
+import '../../widgets/login_required_dialog.dart';
 import 'cart_screen.dart';
 import 'cart_icon_button.dart';
 
@@ -237,39 +239,28 @@ class ProductDetail extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: product.stock > 0
                           ? () {
+                              final isGuest =
+                                  FirebaseAuth.instance.currentUser == null;
+                              if (isGuest) {
+                                showLoginRequiredDialog(context);
+                                return;
+                              }
                               if (inCart) {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        const CartScreen(),
+                                    builder: (_) => const CartScreen(),
                                   ),
                                 );
                               } else {
                                 context
-                                    .read<
-                                      CartProvider
-                                    >()
-                                    .addItem(
-                                      product,
-                                      shop,
-                                    );
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).showSnackBar(
+                                    .read<CartProvider>()
+                                    .addItem(product, shop);
+                                ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text(
-                                      'Added to cart ✓',
-                                    ),
-                                    backgroundColor:
-                                        Color(
-                                          0xFF3D2B1F,
-                                        ),
-                                    duration:
-                                        Duration(
-                                          seconds:
-                                              1,
-                                        ),
+                                    content: Text('Added to cart ✓'),
+                                    backgroundColor: Color(0xFF3D2B1F),
+                                    duration: Duration(seconds: 1),
                                   ),
                                 );
                               }

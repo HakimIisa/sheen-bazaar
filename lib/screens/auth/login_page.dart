@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../splash_screen.dart';
+import '../shop_owner/shop_dashboard.dart';
+import '../admin/admin_panel.dart';
 
-// ... rest of imports stay the same
+enum LoginMode { login, register }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  /// When true the page pops back after successful auth instead of
+  /// replacing the stack. Used when a guest triggers a login-required action.
+  final bool returnAfterLogin;
+  final LoginMode initialMode;
+  const LoginPage({
+    super.key,
+    this.returnAfterLogin = false,
+    this.initialMode = LoginMode.login,
+  });
 
   @override
   State<LoginPage> createState() =>
@@ -22,9 +32,14 @@ class _LoginPageState extends State<LoginPage> {
 
   String _role = 'customer';
   bool _loading = false;
-  bool _isLogin =
-      true; // toggle between login and register
+  late bool _isLogin;
   bool _obscurePass = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLogin = widget.initialMode == LoginMode.login;
+  }
 
   @override
   void dispose() {
@@ -67,13 +82,38 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       // ── Navigate after successful login/register ──
-      if (mounted) {
+      // Always fetch role first — non-customer roles must go to their dashboard
+      // regardless of how login was triggered.
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final role = doc.data()?['role'];
+
+      if (!mounted) return;
+
+      if (role == 'admin') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const SplashScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const AdminPanel()),
         );
+      } else if (role == 'shop_owner') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ShopDashboard()),
+        );
+      } else {
+        // Customer: return to previous page if triggered from guest flow,
+        // otherwise replace with SplashScreen (which routes to CustomerHome).
+        if (widget.returnAfterLogin) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const SplashScreen()),
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {

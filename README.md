@@ -2,9 +2,9 @@
 
 > *A digital marketplace for authentic Kashmiri handicrafts — connecting artisans directly with customers.*
 
-**Developed by:** Hakim Mohammad Iisa  
-**Institution:** Manipal University Jaipur  
-**Platform:** Flutter (Android)  
+**Developed by:** Hakim Mohammad Iisa
+**Institution:** Manipal University Jaipur
+**Platform:** Flutter (Android)
 **Backend:** Firebase (Auth, Firestore, Storage)
 
 ---
@@ -37,6 +37,7 @@
 ## ✨ Features
 
 ### 👤 Customer
+- **Guest browsing** — browse shops and products without creating an account
 - Browse Kashmiri handicraft categories (Pashmina, Papier Mache, Walnut Wood)
 - Explore shops by category with artisan stories
 - View detailed product descriptions and pricing
@@ -47,8 +48,8 @@
 - **✨ AI Shopping Assistant** — type natural language queries like "traditional Kashmiri gift under ₹2000" and get intelligent product recommendations
 
 ### 🧑‍🎨 Vendor / Shop Owner
-- Create and manage their own shop profile
-- Add, edit and delete product listings
+- Create and manage their own shop profile with **real image uploads**
+- Add, edit and delete product listings with **real image uploads**
 - **✨ AI Description Generator** — enter a product name and let AI write a rich, authentic Kashmiri craft description instantly
 - Toggle shop open/closed status
 - View and update incoming customer orders in real time
@@ -74,8 +75,8 @@ Powered by Claude (Anthropic), the AI Shopping Assistant helps customers find pr
 - Maintains conversation context within the session
 
 **Example queries:**
-> "I want a traditional Kashmiri gift under ₹2000"  
-> "Show me pashmina shawls"  
+> "I want a traditional Kashmiri gift under ₹2000"
+> "Show me pashmina shawls"
 > "What wooden crafts do you have?"
 
 ### ✨ AI Description Generator (Vendor)
@@ -85,6 +86,35 @@ Vendors can generate rich, authentic product descriptions with one tap:
 - Tap the ✨ button next to the description field
 - Claude generates a culturally rich, detailed description instantly
 - Highlights handmade nature and cultural significance of the craft
+
+---
+
+## 🖼️ Image Uploads
+
+Shop owners can upload real photos directly from their device gallery instead of pasting URLs.
+
+- **Shop cover image and logo** — uploaded when creating or editing a shop
+- **Product images** — uploaded when adding or editing a product
+- Images are stored in **Firebase Storage** under predictable paths:
+  ```
+  shops/{shopId}/cover.jpg
+  shops/{shopId}/logo.jpg
+  shops/{shopId}/products/{productId}.jpg
+  ```
+- **Constraints:** JPEG and PNG only, maximum 5 MB per image
+- **Security:** Only authenticated users can upload; all images are publicly readable
+
+---
+
+## 🔓 Guest Browsing
+
+The app supports browsing without an account, similar to Amazon or eBay:
+
+- Opening the app lands directly on the home screen — no login wall
+- Guests can browse all categories, shops, and product detail pages freely
+- The AppBar shows a **person icon dropdown** when browsing as a guest — tap it to reveal Login and Sign Up options
+- Attempting to **Add to Cart** or **Place Order** prompts a login/signup sheet
+- After logging in, customers are returned to the exact page they were on; vendors and admins are always routed to their respective dashboards
 
 ---
 
@@ -101,37 +131,43 @@ sheen_bazaar/
 │   ├── services/
 │   │   ├── category_service.dart
 │   │   ├── shop_service.dart
-│   │   └── claude_service.dart    # Claude API integration
+│   │   ├── claude_service.dart        # Claude API integration
+│   │   └── image_upload_service.dart  # Firebase Storage uploads
 │   ├── providers/
-│   │   └── cart_provider.dart     # Global cart state (Provider)
+│   │   └── cart_provider.dart         # Global cart state (Provider)
 │   ├── config/
-│   │   └── api_config.dart        # API keys (excluded from Git)
+│   │   └── api_config.dart            # API keys (excluded from Git)
+│   ├── widgets/
+│   │   ├── image_picker_field.dart    # Reusable image picker UI
+│   │   └── login_required_dialog.dart # Guest auth gate bottom sheet
 │   └── screens/
-│       ├── splash_screen.dart     # 3s branded splash + auth routing
+│       ├── splash_screen.dart         # 3s branded splash + auth routing
 │       ├── auth/
-│       │   └── login_page.dart
+│       │   └── login_page.dart        # Login / Register (supports return-after-login)
 │       ├── customer/
-│       │   ├── customer_home.dart
+│       │   ├── customer_home.dart     # Guest/logged-in aware AppBar
 │       │   ├── shops_list.dart
 │       │   ├── shop_detail.dart
-│       │   ├── product_detail.dart
-│       │   ├── cart_screen.dart
+│       │   ├── product_detail.dart    # Add to Cart gated for guests
+│       │   ├── cart_screen.dart       # Place Order gated for guests
 │       │   ├── cart_icon_button.dart
 │       │   ├── order_history.dart
-│       │   └── ai_assistant.dart  # AI Shopping Assistant ✨
+│       │   └── ai_assistant.dart      # AI Shopping Assistant ✨
 │       ├── shop_owner/
 │       │   ├── shop_dashboard.dart
-│       │   ├── create_shop.dart
-│       │   ├── manage_products.dart  # AI Description Generator ✨
+│       │   ├── create_shop.dart       # Image upload for cover + logo
+│       │   ├── manage_products.dart   # Image upload + AI Description Generator ✨
 │       │   └── vendor_orders.dart
 │       └── admin/
 │           ├── admin_panel.dart
 │           ├── admin_shops.dart
 │           ├── admin_orders.dart
 │           └── admin_users.dart
+├── docs/
+│   └── image_upload_implementation.md # Implementation notes
 ├── assets/
 │   └── images/
-│       └── splash_bg.jpg          # Kashmiri autumn background
+│       └── splash_bg.jpg              # Kashmiri autumn background
 └── pubspec.yaml
 ```
 
@@ -152,8 +188,8 @@ shopName      : String
 description   : String
 categoryId    : String
 ownerId       : String   — Firebase Auth UID
-coverImage    : String   — URL
-logo          : String   — URL
+coverImage    : String   — Firebase Storage URL
+logo          : String   — Firebase Storage URL
 location      : String
 isOpen        : Boolean
 rating        : Number
@@ -163,7 +199,7 @@ createdAt     : Timestamp
   └── products/{productId}
         name        : String
         description : String
-        image       : String   — URL
+        image       : String   — Firebase Storage URL
         price       : Number
         stock       : Number
         categoryId  : String
@@ -218,7 +254,18 @@ flutter pub get
 - Create a new Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 - Enable **Authentication** (Email/Password)
 - Enable **Cloud Firestore**
-- Enable **Firebase Storage**
+- Enable **Firebase Storage** and publish the following security rules:
+  ```
+  rules_version = '2';
+  service firebase.storage {
+    match /b/{bucket}/o {
+      match /{allPaths=**} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+    }
+  }
+  ```
 - Download `google-services.json` and place it in `android/app/`
 - Run `flutterfire configure` to generate `lib/firebase_options.dart`
 
@@ -268,7 +315,7 @@ flutter run
 | Provider | State management (cart) |
 | Claude API (Anthropic) | AI Shopping Assistant + Description Generator |
 | http | REST API calls to Claude |
-| image_picker | Image selection from gallery |
+| image_picker | Image selection from device gallery |
 
 ---
 
@@ -280,14 +327,11 @@ flutter run
 - Push notifications for order updates
 - Vendor analytics dashboard
 - Customer reviews and ratings system
-- Firebase Storage for direct image uploads
 - AI-powered "You might also like" recommendations
 
 ---
 
 ## 📄 License
 
-This project was developed as an academic major project at **Manipal University Jaipur**.  
+This project was developed as an academic major project at **Manipal University Jaipur**.
 © 2026 Hakim Mohammad Iisa. All rights reserved.
-```
-

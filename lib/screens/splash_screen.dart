@@ -104,7 +104,7 @@ class _SplashScreenState
     final user =
         FirebaseAuth.instance.currentUser;
 
-    if (user == null) return const LoginPage();
+    if (user == null) return const CustomerHome();
 
     try {
       final doc = await FirebaseFirestore.instance

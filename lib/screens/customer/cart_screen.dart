@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/cart_provider.dart';
+import '../../widgets/login_required_dialog.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -19,11 +20,14 @@ class _CartScreenState extends State<CartScreen> {
     CartProvider cart,
   ) async {
     if (cart.items.isEmpty) return;
-    setState(() => _placing = true);
 
-    final uid =
-        FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (mounted) showLoginRequiredDialog(context);
+      return;
+    }
+
+    setState(() => _placing = true);
 
     // Group items by shop
     final Map<String, List<CartItem>> byShop = {};
@@ -42,8 +46,7 @@ class _CartScreenState extends State<CartScreen> {
         final shopItems = entry.value;
         final total = shopItems.fold<double>(
           0,
-          (sum, i) =>
-              sum + (i.product.price * i.qty),
+          (acc, i) => acc + (i.product.price * i.qty),
         );
 
         final orderRef = FirebaseFirestore
@@ -240,7 +243,7 @@ class _CartScreenState extends State<CartScreen> {
           BoxShadow(
             color: const Color(
               0xFF3D2B1F,
-            ).withOpacity(0.1),
+            ).withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -326,7 +329,7 @@ class _CartItemCard extends StatelessWidget {
           BoxShadow(
             color: const Color(
               0xFF3D2B1F,
-            ).withOpacity(0.06),
+            ).withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -345,7 +348,7 @@ class _CartItemCard extends StatelessWidget {
                     width: 70,
                     height: 70,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (context, error, stackTrace) =>
                         _imgFallback(),
                   )
                 : _imgFallback(),

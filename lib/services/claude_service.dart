@@ -6,7 +6,7 @@ class ClaudeService {
   static const String _baseUrl =
       'https://api.anthropic.com/v1/messages';
   static const String _model =
-      'claude-sonnet-4-20250514';
+      'claude-sonnet-4-6';
 
   static Future<String> sendMessage({
     required String systemPrompt,
@@ -22,7 +22,7 @@ class ClaudeService {
         },
         body: jsonEncode({
           'model': _model,
-          'max_tokens': 1024,
+          'max_tokens': 4096,
           'system': systemPrompt,
           'messages': messages,
         }),
